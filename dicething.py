@@ -97,6 +97,47 @@ class Pool:
 			self.modifiers.append(SubOnePenalty())
 		else:
 			self.modifiers.append(HighestNegatedPenalty())
+	def getSuccesses(self):
+		successesInfo = {}
+		for color in [color for color in self.dice if len(self.dice[color]) != 0]:
+			successesInfo[color] = self.getColorSuccesses(color)
+		return successesInfo
+
+	def getColorSuccesses(self, color):
+		successes = 0
+		fives = 0
+		for die in self.dice[color]:
+			if die.up == 5:
+				successes += 1
+				fives += 1
+			elif die.up == 6:
+				successes += 1
+		return (successes, fives)
+
+
+	def multiRoll(self, rolls, reportAll=False):
+		self.roll(report=reportAll)
+		successInfo = self.getSuccesses()
+		for _ in range(1, rolls):
+			self.roll(report=reportAll)
+			additionalSuccessInfo = self.getSuccesses()
+			#print additionalSuccessInfo
+			for color in additionalSuccessInfo:
+				oldCount = successInfo[color]
+				successInfo[color] = (additionalSuccessInfo[color][0] + oldCount[0], additionalSuccessInfo[color][1] + oldCount[1])
+			#print successInfo
+		print "---------------------"
+		print "--------ROLL---------"
+		print "-------RESULTS-------"
+		print "---------------------"
+
+		print "In %d rolls:" % rolls
+		for color in successInfo:
+			print "%s: %d successes (%d 5's)" % (color, successInfo[color][0], successInfo[color][1]) 
+
+
+
+
 	def roll(self, applyModifiers=True, report=True):
 		for die in self.diceAsList():
 			die.roll()
@@ -128,17 +169,19 @@ class Pool:
 				for die in dice:
 					print str(die)
 					total += die.up
-				print "total: %d" % total
+				successInfo = self.getColorSuccesses(color)
+				print "successes: %d (%d 5's)  total: %d" % (successInfo[0], successInfo[1], total)
+
 
 
 	def __str__(self):
 		diceString = ""
-		for die in self.diceAsList():
-			diceString += str(die) + " "
+		for color in [color for color in self.dice if len(self.dice[color]) != 0]:			
+			diceString += "%s: %d   " % (color, len(self.dice[color]))
 		modString = ""
 		for mod in self.modifiers:
 			modString += str(mod) + " "
-		return "Dice: [ %s]\nModifiers: [%s]" % (diceString, modString)
+		return "Dice: %s\nModifiers: [%s]" % (diceString, modString)
 
 
 # ----------- Die ---------------
@@ -194,9 +237,12 @@ class Color:
 
 def main():
 	pool = Pool()
+	for _ in range(0, 4):
+		for c in ['red', 'yellow', 'black']:
+			pool.addDie(c)
 	while True:
 		print str(pool)
-		choice = raw_input("1) (A)dd die \n2) (D)elete die \n3) Add (M)odifier \n4) D(e)lete Modifier \n5)(R)oll Dice\n>> ")
+		choice = raw_input("1) (A)dd die \n2) (D)elete die \n3) Add (M)odifier \n4) D(e)lete Modifier \n5) (R)oll Dice\n6) Multiple Roll(s)\n7) Rese(t)\n>> ")
 		choice = choice[0]
 		if choice in ["1", "a", "A"]:
 			colorInput = raw_input("Color: (question mark for list):")
@@ -231,9 +277,14 @@ def main():
 				print "invalid index"
 				continue
 			else:
-				pool.modifiers.pop(selection -1)
+				pool.modifiers.pop(selection)
 		elif choice in ["5", "R", "r"]:
 			pool.roll()
+		elif choice in ["6", "S", "s"]:
+			rolls = int(raw_input("Rolls? "))
+			pool.multiRoll(rolls)
+		elif choice in ["7", "T", "t"]:
+			pool = Pool()
 		print "----------------------------------------"
 
 if __name__ == "__main__":
